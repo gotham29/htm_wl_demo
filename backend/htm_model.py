@@ -7,7 +7,7 @@ class HTMWorkloadModel:
     def __init__(self, config):
         # self.model = HTMmodel(config)
         features_enc_params = build_enc_params(features=config['features'],
-                                               features_samples=config['features_samples'],
+                                            #    features_samples=config['features_samples'],
                                                models_encoders=config['models_encoders'])
         features = {name: Feature(name, params) for name, params in features_enc_params.items()}
         self.model = HTMmodel(features=frozendict(features),
