@@ -1,3 +1,13 @@
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s:%(name)s:%(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
 from htm_streamer import HTMmodel
 from htm_streamer.data import Feature
 from htm_streamer.utils import frozendict 
@@ -5,7 +15,7 @@ from htm_streamer.config import build_enc_params
 
 class HTMWorkloadModel:
     def __init__(self, config):
-        self.timestep = 0
+        # self.timestep = 0
         features_enc_params = build_enc_params(features=config['features'],
                                                models_encoders=config['models_encoders'])
         features = {name: Feature(name, params) for name, params in features_enc_params.items()}
@@ -17,6 +27,5 @@ class HTMWorkloadModel:
                               spatial_anomaly_config=config['spatial_anomaly'])
 
     def update(self, data_point, learn=True):
-        self.timestep += 1
-        print(f"data_point = \n{data_point}")
-        return self.model.run(data_point, self.timestep, learn)
+        # self.timestep += 1
+        return self.model.run(data_point, self.model.iteration_, learn)

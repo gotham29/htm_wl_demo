@@ -1,3 +1,13 @@
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s:%(name)s:%(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
 from streamer import DataStreamer
 from htm_model import HTMWorkloadModel
 from workload_assessor import SpikeDetector
@@ -24,25 +34,16 @@ class Pipeline:
                 "prediction_count": prediction_count,
                 "spike": spike
             })
-            print({
-                "input_data": data,
-                "anomaly_score": anomaly_score,
-                "prediction_count": prediction_count,
-                "spike": spike
-            })  # Clearly print results
+            output_str = f"input={data}; workload={anomaly_score}; predcount={prediction_count}; spike={spike}"
+            logger.info(output_str)
+
 
 if __name__ == '__main__':
 
-    # Get the directory where this script is located
+    # Get config & data paths
     current_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # Define the paths relative to the script's location
-    config_path = os.path.join(current_dir, '..', 'config.yaml')
-    data_path = os.path.join(current_dir, '..', 'data', 'nasa_demo_data.csv')
-
-    # Normalize to absolute paths
-    config_path = os.path.abspath(config_path)
-    data_path = os.path.abspath(data_path)
+    config_path = os.path.join(current_dir, "../config.yaml")
+    data_path = os.path.join(current_dir, "../data/nasa_demo_data.csv")
 
     # Load YAML configuration explicitly
     with open(config_path, 'r') as file:
