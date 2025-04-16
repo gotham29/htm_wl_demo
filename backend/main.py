@@ -14,16 +14,20 @@ class Pipeline:
 
     def run(self):
         for data in self.streamer.stream():
-            anomaly_score = self.htm_model.update(data)
+            output_tuple = self.htm_model.update(data)  #(anomaly_score, anomaly_likelihood, pred_count, steps_predictions)
+            anomaly_score = output_tuple[0]
+            prediction_count = output_tuple[2]
             spike = self.spike_detector.detect_spike(anomaly_score)
             self.output_queue.put({
                 "input_data": data,
                 "anomaly_score": anomaly_score,
+                "prediction_count": prediction_count,
                 "spike": spike
             })
             print({
                 "input_data": data,
                 "anomaly_score": anomaly_score,
+                "prediction_count": prediction_count,
                 "spike": spike
             })  # Clearly print results
 
