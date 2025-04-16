@@ -1,8 +1,8 @@
-from htm_streamer import HTMStreamer
+from htm_streamer import HTMmodel 
 
 class HTMWorkloadModel:
     def __init__(self, config):
-        self.model = HTMStreamer(config)
+        self.model = HTMmodel(config)
         self.initialized = False
 
     def update(self, data_point):
