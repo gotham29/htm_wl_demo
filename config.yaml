@@ -1,0 +1,9 @@
+streaming:
+  interval: 0.5  # seconds per data point
+
+htm:
+  learning_rate: 0.01
+  encoder_params:
+    min_val: 0
+    max_val: 100
+  anomaly_threshold: 0.8
