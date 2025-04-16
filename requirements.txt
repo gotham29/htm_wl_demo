@@ -1,5 +1,4 @@
 pandas
 numpy
 pyyaml
-git+https://github.com/htm-community/htm.core.git
 git+https://github.com/gotham29/htm_streamer.git
