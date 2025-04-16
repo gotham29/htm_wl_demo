@@ -14,7 +14,6 @@ class Pipeline:
 
     def run(self):
         for data in self.streamer.stream():
-            print(f"Processing data point: {data}")  # Ensure data is printing
             anomaly_score = self.htm_model.update(data)
             spike = self.spike_detector.detect_spike(anomaly_score)
             self.output_queue.put({

@@ -5,9 +5,8 @@ from htm_streamer.config import build_enc_params
 
 class HTMWorkloadModel:
     def __init__(self, config):
-        # self.model = HTMmodel(config)
+        self.timestep = 0
         features_enc_params = build_enc_params(features=config['features'],
-                                            #    features_samples=config['features_samples'],
                                                models_encoders=config['models_encoders'])
         features = {name: Feature(name, params) for name, params in features_enc_params.items()}
         self.model = HTMmodel(features=frozendict(features),
@@ -16,10 +15,8 @@ class HTMWorkloadModel:
                               models_params=config['models_params'],
                               predictor_config=config['models_predictor'],
                               spatial_anomaly_config=config['spatial_anomaly'])
-        self.initialized = False
 
-    def update(self, data_point):
-        if not self.initialized:
-            self.model.initialize(data_point)
-            self.initialized = True
-        return self.model.run_realtime(data_point)
+    def update(self, data_point, learn=True):
+        self.timestep += 1
+        print(f"data_point = \n{data_point}")
+        return self.model.run(data_point, self.timestep, learn)

@@ -5,13 +5,13 @@ models_state:
 
 features:
   ROLL_STICK:
-    max: null
-    min: null
+    max: 1.0  #null
+    min: -1.0  #null
     type: float
     weight: 1.0
   PITCH_STIC:
-    max: null
-    min: null
+    max: 1.0  #null
+    min: -1.0  #null
     type: float
     weight: 1.0
 
