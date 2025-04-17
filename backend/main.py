@@ -57,49 +57,62 @@
 
 
 # main.py
-import os
 import time
 import numpy as np
 from config import Config
 from logger import Logger
-from htm_model import HTMWorkloadModel  # You should already have this module
-from spike_detector import SpikeDetector  # This module compares recent/prior entropy
+from htm_model import HTMWorkloadModel  # Preserved from your repo
+from spike_detector import SpikeDetector  # Custom logic for spike detection
 
-def load_data():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(current_dir, "../data/nasa_demo_data.csv")
-    return pd.read_csv(data_path)
-
+def load_data(config):
+    # Use the data loading utility provided by htm_streamer
+    from htm_streamer.data import load_nasa_data
+    return load_nasa_data(config["data"]["data_file"])
 
 def main():
-    config = Config("config.yaml")  #"run_pipeline.yaml"
+    # Load configuration
+    config = Config("run_pipeline.yaml")
     logger = Logger(config)
 
-    input_keys = config['features'].keys()  #config["htm_params"]["input_keys"]
-    recent_window = config["spike_detection"]["recent_window"]
-    prior_window = config["spike_detection"]["prior_window"]
-    growth_threshold = config["spike_detection"]["growth_threshold"]
+    # Retrieve HTM parameters from the config
+    input_keys = config["htm_params"]["input_keys"]
+    anomaly_threshold = config["htm_params"]["anomaly_threshold"]
 
-    htm_model = HTMWorkloadModel(config)  #(input_keys=input_keys)
-    spike_detector = SpikeDetector(recent_window, prior_window, growth_threshold)
+    # Initialize the HTM model and spike detector
+    htm = HTMWorkloadModel(input_keys=input_keys)  # Keep custom model
+    spike_detector = SpikeDetector(config["spike_detection"]["recent_window"],
+                                   config["spike_detection"]["prior_window"],
+                                   config["spike_detection"]["growth_threshold"])
 
-    data = load_data()
+    # Load the data
+    data = load_data(config)
+    lag_start = None
+    detection_lag = None
     timestep = 0
+
     for row in data:
         timestep += 1
         input_vector = {key: row[key] for key in input_keys}
 
-        model_output = htm_model.update(input_vector)  #(anomaly_score, anomaly_likelihood, pred_count, steps_predictions)
-        anomaly_score = model_output[0]
-        pred_count = model_output[2]
-        spike_detector.append(anomaly_score)
+        # Update the HTM model and calculate anomaly score
+        anomaly_score = htm.update(input_vector)[0]  # Assuming the model returns a tuple: (score, sdr)
 
+        # Detect spikes
+        spike_detector.append(anomaly_score)
         spike_flag = False
         if spike_detector.ready():
             spike_flag = spike_detector.detect_spike()
 
-        logger.log(timestep, input_vector, anomaly_score, pred_count, spike_flag)
+        # Log the results
+        if timestep == 1000:  # Simulating a known MWL-inducing event
+            lag_start = timestep
 
+        if spike_flag and lag_start and detection_lag is None:
+            detection_lag = timestep - lag_start
+
+        logger.log(timestep, anomaly_score, spike_flag, detection_lag)
+
+        # Simulate real-time stream (adjust as needed for your setup)
         time.sleep(0.01)
 
     print("Run complete.")
