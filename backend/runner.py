@@ -52,33 +52,53 @@ from backend.wl_logger import WLLogger
 
 # Load the NASA demo dataset once
 demo_df = pd.read_csv("data/nasa_demo_data.csv")
-input_columns = []  #"RollStick", "PitchStick"
+input_columns = ["ROLL_STICK", "PITCH_STIC"]  #"RollStick", "PitchStick"
 
 # Initialize HTM model and Spike detector
 model = HTMWorkloadModel(config_path="config.yaml")
 spike_detector = SpikeDetector()
 logger = WLLogger(log_path="backend/logs/stream_output.csv")
 
-# Start infinite loop through the dataset
 while True:
-    print("[runner.py] Starting one full demo loop of NASA data...")
-    logger.clear_log()
+    logger.clear_log()  # start fresh each loop
+    print("Looping demo data...")
+
     for timestep, row in demo_df.iterrows():
-        input_vector = row[input_columns].to_dict()
-
-        # Update HTM model and get anomaly score
+        input_vector = {feat: row[feat] for feat in input_columns}  #{"RollStick": row["RollStick"], "PitchStick": row["PitchStick"]}
         score, _ = model.update(input_vector)
+        is_spike, lag = detector.update(score, timestep)
 
-        # Update spike detector
-        spike_flag, detection_lag = spike_detector.update(score, timestep)
-
-        # Log output
         logger.log({
             "timestep": timestep,
-            "anomaly_score": score,
-            "spike_flag": spike_flag,
-            "detection_lag": detection_lag,
-            **input_vector  # log RollStick, PitchStick
+            "anomaly_score": round(score, 3),
+            "spike_flag": is_spike,
+            "detection_lag": lag if lag is not None else "",
+            "RollStick": row["RollStick"],
+            "PitchStick": row["PitchStick"]
         })
 
         time.sleep(1)  # Match frontend refresh interval
+
+# # Start infinite loop through the dataset
+# while True:
+#     print("[runner.py] Starting one full demo loop of NASA data...")
+#     logger.clear_log()
+#     for timestep, row in demo_df.iterrows():
+#         input_vector = row[input_columns].to_dict()
+
+#         # Update HTM model and get anomaly score
+#         score, _ = model.update(input_vector)
+
+#         # Update spike detector
+#         spike_flag, detection_lag = spike_detector.update(score, timestep)
+
+#         # Log output
+#         logger.log({
+#             "timestep": timestep,
+#             "anomaly_score": score,
+#             "spike_flag": spike_flag,
+#             "detection_lag": detection_lag,
+#             **input_vector  # log RollStick, PitchStick
+#         })
+
+#         time.sleep(1)  # Match frontend refresh interval
