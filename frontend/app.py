@@ -11,7 +11,7 @@ st.markdown("This dashboard streams HTM workload anomaly scores with spike detec
 # Sidebar controls
 log_path = st.sidebar.text_input("\U0001F50D Path to Stream Log", value="backend/logs/stream_output.csv")
 refresh_interval = st.sidebar.slider("\u23F1 Refresh Interval (seconds)", 1, 10, 1)
-n = st.sidebar.slider("\U0001F4CA Rows to Show in Plot", 10, 500, 50)
+n = st.sidebar.slider("\U0001F4CA Rows to Show in Plot", 1, 100, 10)
 
 # Main dashboard loop
 placeholder = st.empty()
