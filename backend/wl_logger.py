@@ -26,6 +26,10 @@ class Logger:
             if len(self.buffer) >= self.flush_every:
                 self._flush()
 
+    def clear_log(self):
+        """Optional: Clear log file before starting a new cycle."""
+        self._initialize_log()
+
     def _flush(self):
         if not self.buffer:
             return

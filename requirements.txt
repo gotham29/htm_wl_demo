@@ -1,4 +1,6 @@
 pandas
 numpy
 pyyaml
+streamlit>=1.28
+plotly
 git+https://github.com/gotham29/htm_streamer.git
