@@ -39,6 +39,17 @@ class SpikeDetector:
         self.growth_threshold = growth_threshold
         self.total_window = prior_window + recent_window
         self.entropy_buffer = deque(maxlen=self.total_window)
+        self.last_event = None
+
+    def update(self, score, timestep=None):
+        self.append(score)
+        if self.ready():
+            spike = self.detect_spike()
+            lag = timestep - self.last_event if spike and self.last_event is not None else None
+            if spike:
+                self.last_event = timestep
+            return spike, lag
+        return False, None
 
     def append(self, score):
         self.entropy_buffer.append(score)

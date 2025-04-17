@@ -15,6 +15,11 @@ class Logger:
                 writer = csv.writer(f)
                 writer.writerow(["timestep", "anomaly_score", "spike_flag", "detection_lag"])
 
+    def _initialize_log(self):
+        with open(self.log_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["timestep", "anomaly_score", "spike_flag", "detection_lag"])
+
     def log(self, timestep, anomaly_score, spike_flag, detection_lag=None):
         row = [timestep, anomaly_score, spike_flag, detection_lag]
 
