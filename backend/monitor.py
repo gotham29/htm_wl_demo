@@ -30,6 +30,7 @@ def run_monitor_loop(data, model, detector, logger, anomaly_event_timesteps=None
         # Remove handled events so future spikes don't reuse them
         unhandled_events -= handled_events
 
-        logger.log(model.timestep, anomaly_score, spike_flag, detection_lag)
-        
+        logger.log(model.timestep, anomaly_score, spike_flag, detection_lag)    
         time.sleep(0.01)
+
+    logger.close()

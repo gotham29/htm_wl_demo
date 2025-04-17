@@ -31,7 +31,13 @@ def run_demo(data_path=None, config_path=None):
     # Initialize components
     model = HTMWorkloadModel(config)
     detector = SpikeDetector(recent_window, prior_window, growth_threshold)
-    logger = Logger(log_to_file=True, log_path=log_path, log_console=True)
+    logger = Logger(
+        log_to_file=True,
+        log_path=log_path,
+        log_console=True,
+        flush_every=config['logging'].get("log_flush_every", 50)
+    )
+
 
     # Load data and run
     data = load_data(data_path)

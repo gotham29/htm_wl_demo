@@ -7,6 +7,7 @@ logging:
   log_to_file: true
   log_path: "logs/run_log.csv"
   log_console: true
+  log_flush_every: 50
 
 features:
   ROLL_STICK:
@@ -21,8 +22,8 @@ features:
     weight: 1.0
 
 anomaly_event_timesteps: 
-  # - 160
-  # - 190
+  - 160
+  - 190
 
 models_state:
   model_for_each_feature: false
