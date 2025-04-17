@@ -7,7 +7,7 @@ from utils import load_data
 import os
 import yaml
 
-def run_demo(data_path=None, config_path=None):
+def run_demo(data_path=None, config_path=None, flush_every=50):
     # Get project root (parent of backend/)
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -31,11 +31,17 @@ def run_demo(data_path=None, config_path=None):
     # Initialize components
     model = HTMWorkloadModel(config)
     detector = SpikeDetector(recent_window, prior_window, growth_threshold)
+    # logger = Logger(
+    #     log_to_file=True,
+    #     log_path=log_path,
+    #     log_console=True,
+    #     flush_every=config['logging'].get("log_flush_every", 50)
+    # )
     logger = Logger(
         log_to_file=True,
         log_path=log_path,
         log_console=True,
-        flush_every=config['logging'].get("log_flush_every", 50)
+        flush_every=flush_every or config.get("log_flush_every", 50)
     )
 
 
