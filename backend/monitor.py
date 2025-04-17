@@ -1,14 +1,15 @@
-# backend/monitor.py
 import time
 
-def run_monitor_loop(data, model, detector, logger, anomaly_event_timestep=1000):
-    timestep = 0
-    lag_start = None
+def run_monitor_loop(data, model, detector, logger, anomaly_event_timesteps=None):
+    if anomaly_event_timesteps is None:
+        anomaly_event_timesteps = []
+
+    unhandled_events = set(anomaly_event_timesteps)
+    handled_events = set()
     detection_lag = None
 
     for row in data:
-        timestep += 1
-        input_vector = {key: row[key] for key in model.input_keys}
+        input_vector = {key: row[key] for key in model.features}
 
         anomaly_score = model.update(input_vector)[0]
         detector.append(anomaly_score)
@@ -17,10 +18,18 @@ def run_monitor_loop(data, model, detector, logger, anomaly_event_timestep=1000)
         if detector.ready():
             spike_flag = detector.detect_spike()
 
-        if timestep == anomaly_event_timestep:
-            lag_start = timestep
-        if spike_flag and lag_start and detection_lag is None:
-            detection_lag = timestep - lag_start
+        # Assign detection lag only for first spike after a specific unhandled anomaly
+        detection_lag = None
+        if spike_flag:
+            for event_time in sorted(unhandled_events):
+                if model.timestep > event_time:
+                    detection_lag = model.timestep - event_time
+                    handled_events.add(event_time)
+                    break  # only report lag for the earliest unhandled event
 
-        logger.log(timestep, anomaly_score, spike_flag, detection_lag)
+        # Remove handled events so future spikes don't reuse them
+        unhandled_events -= handled_events
+
+        logger.log(model.timestep, anomaly_score, spike_flag, detection_lag)
+        
         time.sleep(0.01)

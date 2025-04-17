@@ -20,6 +20,10 @@ features:
     type: float
     weight: 1.0
 
+anomaly_event_timesteps: 
+  # - 160
+  # - 190
+
 models_state:
   model_for_each_feature: false
   return_pred_count: true

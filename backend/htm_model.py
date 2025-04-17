@@ -15,11 +15,11 @@ from htm_streamer.config import build_enc_params
 
 class HTMWorkloadModel:
     def __init__(self, config):
-        # self.timestep = 0
+        self.timestep = 0
         features_enc_params = build_enc_params(features=config['features'],
                                                models_encoders=config['models_encoders'])
-        features = {name: Feature(name, params) for name, params in features_enc_params.items()}
-        self.model = HTMmodel(features=frozendict(features),
+        self.features = {name: Feature(name, params) for name, params in features_enc_params.items()}
+        self.model = HTMmodel(features=frozendict(self.features),
                               use_spatial_pooler=config['models_state']['use_sp'],
                               return_pred_count=config['models_state']['return_pred_count'],
                               models_params=config['models_params'],
@@ -27,5 +27,5 @@ class HTMWorkloadModel:
                               spatial_anomaly_config=config['spatial_anomaly'])
 
     def update(self, data_point, learn=True):
-        # self.timestep += 1
+        self.timestep += 1
         return self.model.run(data_point, self.model.iteration_, learn)
