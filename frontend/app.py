@@ -1,100 +1,82 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-import time
 import os
+import time
+import glob
 
 st.set_page_config(page_title="HTM-WL Realtime Demo", layout="wide")
-st.title("\U0001F680 HTM-WL Real-Time Dashboard")
+st.title("🚀 HTM-WL Real-Time Dashboard")
 st.markdown("This dashboard streams HTM workload anomaly scores with spike detection.")
 
 # Sidebar controls
-log_path = st.sidebar.text_input("\U0001F50D Path to Stream Log", value="backend/logs/stream_output.csv")
-refresh_interval = st.sidebar.slider("\u23F1 Refresh Interval (seconds)", 1, 10, 1)
-n = st.sidebar.slider("\U0001F4CA Rows to Show in Plot", 1, 100, 10)
+log_dir = st.sidebar.text_input("📂 Log Directory", value="backend/logs/stream_steps")
+refresh_interval = st.sidebar.slider("⏱ Refresh Interval (seconds)", 1, 10, 1)
+n = st.sidebar.slider("📊 Rows to Show in Plot", 50, 500, 100)
 
-# Main dashboard loop
 placeholder = st.empty()
+latest_timestep = None
 
 while True:
-    if not os.path.exists(log_path):
-        placeholder.warning(f"No data found yet. Waiting for backend to write {os.path.basename(log_path)}...")
+    if not os.path.isdir(log_dir):
+        placeholder.warning(f"Waiting for log directory '{log_dir}' to be created...")
         time.sleep(refresh_interval)
         continue
 
-    try:
-        df = pd.read_csv(log_path)
-    except Exception as e:
-        placeholder.error(f"Error reading CSV: {e}")
+    log_files = sorted(glob.glob(os.path.join(log_dir, "step_*.csv")))
+    if not log_files:
+        placeholder.warning("No step log files found yet...")
         time.sleep(refresh_interval)
         continue
 
-    if df.empty:
-        placeholder.warning("Log file is currently empty...")
+    # Concatenate most recent log files
+    df_list = []
+    for file in log_files[-n:]:
+        try:
+            df = pd.read_csv(file)
+            df_list.append(df)
+        except Exception as e:
+            continue  # skip unreadable files
+
+    if not df_list:
+        placeholder.warning("No valid log data yet...")
         time.sleep(refresh_interval)
         continue
 
-    df = df.sort_values("timestep")
-    recent_df = df.tail(n)
+    df = pd.concat(df_list, ignore_index=True)
 
-    latest_row = recent_df.iloc[-1]
-    current_time = int(latest_row['timestep'])
-    current_score = latest_row['anomaly_score']
-    current_spike = bool(latest_row.get('spike_flag', False))
-    current_lag = latest_row.get('detection_lag') if pd.notna(latest_row.get('detection_lag')) else "--"
-
+    # UI
     with placeholder.container():
-        st.subheader("\U0001F4FA Real-Time Streaming Charts")
-        st.markdown(f"**\u23F3 Current Timestep:** {current_time} | **\U0001F9E0 Anomaly Score:** {current_score:.2f} | **\u26A1 MWL Spike:** {'YES' if current_spike else 'No'} | **\u23F1 Lag:** {current_lag}")
+        st.markdown("### 📉 Real-Time Streaming Charts")
 
-        # Roll & Pitch Stick Input
-        if "RollStick" in df.columns and "PitchStick" in df.columns:
-            input_chart = alt.Chart(recent_df.reset_index()).transform_fold(
-                ["RollStick", "PitchStick"],
-                as_=["Control", "Value"]
-            ).mark_line().encode(
-                x='timestep:Q',
-                y='Value:Q',
-                color='Control:N'
-            ).properties(title="Roll & Pitch Control Inputs")
-            st.altair_chart(input_chart, use_container_width=True)
+        current_step = int(df['timestep'].iloc[-1])
+        score = df['anomaly_score'].iloc[-1]
+        spike = df['spike_flag'].iloc[-1]
+        lag = df['detection_lag'].iloc[-1] if 'detection_lag' in df.columns else None
 
-        # Anomaly Score
-        anomaly_chart = alt.Chart(recent_df).mark_line(color='lightblue').encode(
+        status_cols = st.columns(4)
+        status_cols[0].markdown(f"**🔄 Current Timestep:** `{current_step}`")
+        status_cols[1].markdown(f"**📈 Anomaly Score:** `{score:.3f}`")
+        status_cols[2].markdown(f"**⚡ MWL Spike:** `{'Yes' if spike else 'No'}`")
+        status_cols[3].markdown(f"**⏳ Lag:** `{int(lag) if pd.notna(lag) else '—'}`")
+
+        anomaly_chart = alt.Chart(df).mark_line(color='lightblue').encode(
             x='timestep:Q',
             y='anomaly_score:Q'
-        ).properties(title="HTM Anomaly Score")
+        ).properties(height=300)
 
-        spike_points = alt.Chart(recent_df[recent_df['spike_flag'] == True]).mark_point(
-            color='red', size=60
-        ).encode(
+        spikes = alt.Chart(df[df['spike_flag'] == True]).mark_point(color='red', size=60).encode(
             x='timestep:Q',
-            y='anomaly_score:Q',
-            tooltip=['timestep', 'anomaly_score']
+            y='anomaly_score:Q'
         )
 
-        st.altair_chart(anomaly_chart + spike_points, use_container_width=True)
+        st.altair_chart(anomaly_chart + spikes, use_container_width=True)
 
-        # MWL Spike Detector (tick chart)
-        spike_ticks = alt.Chart(recent_df[recent_df['spike_flag'] == True]).mark_tick(
-            color='red', thickness=3
-        ).encode(
-            x='timestep:Q',
-            y=alt.value(0.5),
-            tooltip=['timestep']
-        ).properties(title="\u26A1 MWL Spike Detection")
-        st.altair_chart(spike_ticks, use_container_width=True)
-
-        # Detection Lag Events
         if 'detection_lag' in df.columns and df['detection_lag'].notna().any():
-            lag_chart = alt.Chart(recent_df[recent_df['detection_lag'].notna()]).mark_circle(
-                color='orange', size=80
-            ).encode(
+            lag_chart = alt.Chart(df[df['detection_lag'].notna()]).mark_circle(color='orange', size=80).encode(
                 x='timestep:Q',
-                y=alt.value(0.5),
-                tooltip=['timestep', 'detection_lag']
-            ).properties(title="\u23F3 Detection Lag Events")
-
+                y=alt.value(1)
+            ).properties(title="⏱ Detection Lag Events")
             st.altair_chart(lag_chart, use_container_width=True)
 
     time.sleep(refresh_interval)

@@ -1,0 +1,2 @@
+timestep,anomaly_score,spike_flag,detection_lag
+68,0.0714285746216774,True,5

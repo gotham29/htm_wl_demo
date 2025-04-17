@@ -20,10 +20,10 @@ input_columns = list(config['features'])
 # Initialize HTM model and Spike detector
 model = HTMWorkloadModel(config=config)
 spike_detector = SpikeDetector()
-logger = Logger(log_path="backend/logs/stream_output.csv")
+logger = Logger(log_dir = "backend/logs/stream_steps")  #Logger(log_path="backend/logs/stream_output.csv")
 
 while True:
-    logger.clear_log()  # start fresh each loop
+    logger.clear_logs()  # start fresh each loop
     print("Looping demo data...")
 
     for timestep, row in demo_df.iterrows():
