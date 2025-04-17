@@ -3,7 +3,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-REQUIRED_TOP_LEVEL_KEYS = ["features", "models_params", "models_state",
+REQUIRED_TOP_LEVEL_KEYS = ["features", "spike_detection", "models_params", "models_state",
                            "models_encoders", "spatial_anomaly", "models_predictor"]
 
 def validate_config(config):
@@ -14,18 +14,8 @@ def validate_config(config):
     for feature, params in config.get("features", {}).items():
         if "min" not in params or "max" not in params:
             raise ValueError(f"Feature '{feature}' must include both 'min' and 'max' values.")
-
-    logger.info("Configuration validated successfully.")
-
-
-# config_validator.py
-def validate_config(config):
-    assert "htm_params" in config, "Missing 'htm_params' section"
-    assert "spike_detection" in config, "Missing 'spike_detection' section"
-
-    htm = config["htm_params"]
-    assert 0.0 <= htm["anomaly_threshold"] <= 1.0, "Invalid 'anomaly_threshold'"
-    assert htm["input_keys"], "At least one input feature must be specified"
+        if params['max'] <= params['min']:
+            raise ValueError(f"Max must exceed min for Feature '{feature}'.")
 
     spike = config["spike_detection"]
     assert spike["recent_window"] > 0, "recent_window must be > 0"
