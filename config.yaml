@@ -1,7 +1,12 @@
-models_state:
-  model_for_each_feature: false
-  return_pred_count: true
-  use_sp: false
+spike_detection:
+  recent_window: 7
+  prior_window: 14
+  growth_threshold: 50
+
+logging:
+  log_to_file: true
+  log_path: "logs/run_log.csv"
+  log_console: true
 
 features:
   ROLL_STICK:
@@ -14,6 +19,11 @@ features:
     min: -1.0  #null
     type: float
     weight: 1.0
+
+models_state:
+  model_for_each_feature: false
+  return_pred_count: true
+  use_sp: false
 
 models_encoders:
   n: 400

@@ -17,7 +17,7 @@ This repository demonstrates real-time workload estimation using Hierarchical Te
 ```
 htm_wl_demo/
 ├── backend/
-│   ├── htm_model.py             # Interfaces with HTMStreamer
+│   ├── htm_model.py            # Interfaces with HTMStreamer
 │   ├── workload_assessor.py    # Spike detection logic
 │   ├── streamer.py             # Streams data row-by-row
 │   └── main.py                 # Runs the real-time backend
