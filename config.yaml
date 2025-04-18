@@ -1,13 +1,15 @@
+anomaly_event_timesteps: 
+  - 160
+  - 190
+
+frontend:
+  plot_window_size: 120
+  log_dir: backend/logs/stream_steps
+
 spike_detection:
   recent_window: 7
   prior_window: 14
   growth_threshold: 50
-
-logging:
-  log_to_file: true
-  log_path: "logs/run_log.csv"
-  log_console: true
-  log_flush_every: 1
 
 features:
   ROLL_STICK:
@@ -20,10 +22,6 @@ features:
     min: -0.5  #null
     type: float
     weight: 1.0
-
-anomaly_event_timesteps: 
-  - 160
-  - 190
 
 models_state:
   model_for_each_feature: false
