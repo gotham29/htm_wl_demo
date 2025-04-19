@@ -1,0 +1,76 @@
+anomaly_event_timesteps: []
+features:
+  PITCH_STIC:
+    max: 0.3980554933333333
+    min: -0.0843767523333333
+    type: float64
+    weight: 1.0
+  ROLL_STICK:
+    max: 0.7444473699999999
+    min: -0.39365114
+    type: float64
+    weight: 1.0
+frontend:
+  log_dir: backend/logs/stream_steps
+  plot_window_size: 120
+models_encoders:
+  n: 400
+  n_buckets: 130
+  p_padding: 20
+  seed: 0
+  w: 21
+models_params:
+  anomaly_likelihood:
+    probationaryPeriod: 500
+    reestimationPeriod: 100
+  sp:
+    boostStrength: 0.0
+    columnCount: 2048
+    dutyCyclePeriod: 1000
+    globalInhibition: true
+    localAreaDensity: 0.0
+    minPctOverlapDutyCycle: 0.001
+    numActiveColumnsPerInhArea: 40
+    potentialPct: 0.8
+    seed: 0
+    stimulusThreshold: 0.0
+    synPermActiveInc: 0.003
+    synPermConnected: 0.2
+    synPermInactiveDec: 0.0005
+    wrapAround: true
+  tm:
+    activationThreshold: 20
+    cellsPerColumn: 32
+    columnDimensions: 2048
+    initialPerm: 0.24
+    maxSegmentsPerCell: 128
+    maxSynapsesPerSegment: 128
+    minThreshold: 13
+    newSynapseCount: 31
+    permanenceConnected: 0.5
+    permanenceDec: 0.008
+    permanenceInc: 0.04
+    predictedSegmentDecrement: 0.001
+    seed: 0
+models_predictor:
+  enable: false
+  resolution: 1
+  sdrc_alpha: 0.1
+  steps_ahead:
+  - 1
+  - 2
+models_state:
+  model_for_each_feature: false
+  return_pred_count: true
+  use_sp: false
+spatial_anomaly:
+  anom_prop: 0.3
+  enable: true
+  perc_max: 100
+  perc_min: 0
+  tolerance: 0.05
+  window: 100000
+spike_detection:
+  growth_threshold: 50
+  prior_window: 15
+  recent_window: 5

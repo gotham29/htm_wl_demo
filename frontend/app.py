@@ -1,122 +1,178 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
-import os
-import time
 import yaml
-from glob import glob
+import os
+import sys
+import threading
+import time
+import glob
+import numpy as np
+sys.path.append('backend')
+from demo_runner import run_demo
 
-# --- CONFIGURATION ---
-DEFAULT_LOG_DIR = "backend/logs/stream_steps"
-DEFAULT_REFRESH_INTERVAL = 2
-DEFAULT_WINDOW_SIZE = 120
-CONFIG_YAML_PATH = "config.yaml"
-
-# --- PAGE SETUP ---
-st.set_page_config(page_title="HTM-WL Realtime Dashboard", layout="wide")
+st.set_page_config(layout="wide")
 st.title("🚀 HTM-WL Real-Time Dashboard")
-st.markdown("This dashboard streams HTM workload anomaly scores with spike detection.")
 
-# --- SIDEBAR ---
-log_dir = st.sidebar.text_input("🗂 Log Directory", value=DEFAULT_LOG_DIR)
-refresh_interval = st.sidebar.slider("⏱ Refresh Interval (seconds)", 1, 10, DEFAULT_REFRESH_INTERVAL)
-window_size = st.sidebar.slider("📊 Rows to Show in Plot", 50, 500, DEFAULT_WINDOW_SIZE)
+# --- Dataset Paths ---
+dataset_root = "datasets"
+datasets = [name for name in os.listdir(dataset_root) if os.path.isdir(os.path.join(dataset_root, name))]
 
-# --- FEATURE EXTRACTION FROM CONFIG ---
-def get_input_features_from_config(config_path):
-    try:
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
-        return config.get('features', [])
-    except Exception as e:
-        st.warning(f"Failed to read features from {config_path}: {e}")
-        return []
+# --- Selection Controls ---
+data_mode = st.sidebar.radio("Choose Data Source", ["Demo Dataset", "Upload CSV"])
+selected_dataset = None
+uploaded_df = None
+uploaded_config = {}
 
-input_features = get_input_features_from_config(CONFIG_YAML_PATH)
+# --- Shared Variables ---
+selected_features = []
+recent_window = prior_window = growth_threshold = None
+anomaly_event_timesteps = []
+data_path = config_path = None
 
-# --- MAIN DISPLAY PLACEHOLDER ---
-placeholder = st.empty()
+# --- Demo Dataset Mode ---
+if data_mode == "Demo Dataset":
+    selected_dataset = st.sidebar.selectbox("📁 Select Demo Dataset", datasets)
+    config_path = os.path.join(dataset_root, selected_dataset, "config.yaml")
+    data_path = os.path.join(dataset_root, selected_dataset, "data.csv")
 
-# --- MAIN LOOP ---
-last_seen_files = set()
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
 
-while True:
-    if not os.path.exists(log_dir):
-        placeholder.warning(f"Waiting for log directory '{log_dir}' to be created...")
-        time.sleep(refresh_interval)
-        continue
+    st.sidebar.markdown("---")
+    available_features = list(config.get("features", {}).keys())
+    selected_features = st.sidebar.multiselect("Select Features", available_features, default=available_features[:1], max_selections=5)
 
-    step_files = sorted(glob(os.path.join(log_dir, "step_*.csv")))
+    spike_cfg = config.get("spike_detection", {})
+    recent_window = st.sidebar.number_input("Recent Window", 1, 100, spike_cfg.get("recent_window", 5))
+    prior_window = st.sidebar.number_input("Prior Window", 1, 100, spike_cfg.get("prior_window", 15))
+    growth_threshold = st.sidebar.number_input("Growth Threshold (%)", 1, 500, spike_cfg.get("growth_threshold", 50))
 
-    if not step_files:
-        placeholder.warning("No step log files found yet...")
-        time.sleep(refresh_interval)
-        continue
+    anomaly_event_timesteps = config.get("anomaly_event_timesteps", [])
+    st.sidebar.text(f"Anomaly Timesteps: {anomaly_event_timesteps}")
 
-    # Track newly seen files
-    new_files = [f for f in step_files if f not in last_seen_files]
-    last_seen_files.update(step_files)
+# --- Upload Mode ---
+elif data_mode == "Upload CSV":
+    uploaded_file = st.sidebar.file_uploader("Upload your CSV file", type="csv")
 
-    try:
-        # Read only the most recent N files
-        files_to_read = step_files[-window_size:]
-        dfs = [pd.read_csv(f) for f in files_to_read if os.path.isfile(f)]
-        df = pd.concat(dfs).sort_values(by="timestep")
-    except Exception as e:
-        placeholder.error(f"Data loading error: {e}")
-        time.sleep(refresh_interval)
-        continue
+    if uploaded_file is not None:
+        uploaded_df = pd.read_csv(uploaded_file)
+        numeric_cols = uploaded_df.select_dtypes(include=[np.number]).columns.tolist()
 
-    if df.empty or "timestep" not in df.columns:
-        placeholder.warning("No valid data found in the files.")
-        time.sleep(refresh_interval)
-        continue
+        selected_features = st.sidebar.multiselect("Select Features", numeric_cols, default=numeric_cols[:1], max_selections=5)
+        recent_window = st.sidebar.number_input("Recent Window", 1, 100, 5)
+        prior_window = st.sidebar.number_input("Prior Window", 1, 100, 15)
+        growth_threshold = st.sidebar.number_input("Growth Threshold (%)", 1, 500, 50)
+        anomaly_text = st.sidebar.text_input("Anomaly Timesteps (comma-separated)", "")
 
-    # --- DASHBOARD CONTENT ---
-    with placeholder.container():
-        st.markdown("## 📉 Real-Time Streaming Charts")
+        # Convert anomaly list to ints
+        if anomaly_text:
+            try:
+                anomaly_event_timesteps = [int(x.strip()) for x in anomaly_text.split(",") if x.strip().isdigit()]
+            except Exception:
+                anomaly_event_timesteps = []
 
-        current_timestep = int(df["timestep"].iloc[-1])
-        current_score = df["anomaly_score"].iloc[-1]
-        current_spike = df["spike_flag"].iloc[-1]
-        current_lag = df["detection_lag"].iloc[-1] if not pd.isna(df["detection_lag"].iloc[-1]) else "-"
+        # Save temp data and config
+        os.makedirs("user_data", exist_ok=True)
+        data_path = "user_data/uploaded.csv"
+        config_path = "user_data/config.yaml"
+        uploaded_df.to_csv(data_path, index=False)
 
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("🕓 Current Timestep", current_timestep)
-        col2.metric("📈 Anomaly Score", f"{current_score:.3f}")
-        col3.metric("⚡ MWL Spike", "Yes" if current_spike else "No")
-        col4.metric("⏳ Lag", current_lag)
+        uploaded_config = {
+            "features": {},
+            "frontend": {
+                "plot_window_size": 120,
+                "log_dir": "backend/logs/stream_steps"
+            },
+            "spike_detection": {
+                "recent_window": recent_window,
+                "prior_window": prior_window,
+                "growth_threshold": growth_threshold
+            },
+            "anomaly_event_timesteps": anomaly_event_timesteps
+        }
 
-        # --- ANOMALY SCORE PLOT ---
-        base = alt.Chart(df).encode(x='timestep:Q')
-        anomaly_line = base.mark_line(color='lightblue').encode(y='anomaly_score:Q')
-        spikes = base.transform_filter("datum.spike_flag == true").mark_point(color='red', size=60).encode(y='anomaly_score:Q')
-        st.altair_chart(anomaly_line + spikes, use_container_width=True)
+        for col in selected_features:
+            np_dtype = uploaded_df[col].dtype
+            if np.issubdtype(np_dtype, np.floating):
+                dtype = "float"
+            elif np.issubdtype(np_dtype, np.integer):
+                dtype = "int"
+            else:
+                continue  # skip unsupported types
 
-        # --- INPUT FEATURE PLOTS ---
-        if input_features:
-            for feature in input_features:
-                if feature in df.columns:
-                    st.altair_chart(
-                        alt.Chart(df).mark_line().encode(
-                            x='timestep:Q',
-                            y=alt.Y(f'{feature}:Q', title=feature),
-                            tooltip=['timestep', feature]
-                        ).properties(title=f"🎮 Input Feature: {feature}"),
-                        use_container_width=True
-                    )
+            uploaded_config["features"][col] = {
+                "min": float(uploaded_df[col].min()),
+                "max": float(uploaded_df[col].max()),
+                "type": dtype,
+                "weight": 1.0
+            }
 
-        # --- DETECTION LAG EVENTS ---
-        if 'detection_lag' in df.columns:
-            lag_events = df[df['detection_lag'].notna()]
-            if not lag_events.empty:
-                st.altair_chart(
-                    alt.Chart(lag_events).mark_circle(size=80, color='orange').encode(
-                        x='timestep:Q',
-                        y=alt.value(1),
-                        tooltip=['timestep', 'detection_lag']
-                    ).properties(title="⌛ Detection Lag Events"),
-                    use_container_width=True
-                )
+        with open(config_path, 'w') as f:
+            yaml.dump(uploaded_config, f)
 
-    time.sleep(refresh_interval)
+# --- Run Button ---
+st.sidebar.markdown("---")
+run_clicked = st.sidebar.button("▶️ Start Streaming")
+
+# Session flag
+if "thread_running" not in st.session_state:
+    st.session_state.thread_running = False
+
+# --- Start Background Thread ---
+if run_clicked and not st.session_state.thread_running:
+    st.success("Starting backend thread...")
+
+    def thread_target():
+        print("\n🔁 run_demo() has started execution.")
+        run_demo(
+            data_path,
+            config_path,
+            selected_features,
+            recent_window,
+            prior_window,
+            growth_threshold
+        )
+        st.session_state.thread_running = False
+
+    threading.Thread(target=thread_target, daemon=True).start()
+    st.session_state.thread_running = True
+
+# --- Live Plot Section ---
+st.markdown("---")
+st.subheader("📊 Live Real-Time Plot")
+log_dir = "backend/logs/stream_steps"
+plot_placeholder = st.empty()
+last_files = set()
+data_so_far = pd.DataFrame()
+
+if st.session_state.thread_running:
+    for _ in range(300):  # limit loop for safety
+        step_files = sorted(glob.glob(os.path.join(log_dir, "step_*.csv")))
+        new_files = [f for f in step_files if f not in last_files]
+
+        if new_files:
+            new_dfs = [pd.read_csv(f) for f in new_files]
+            data_so_far = pd.concat([data_so_far] + new_dfs, ignore_index=True)
+            last_files.update(new_files)
+
+            # Trim window
+            plot_window_size = 120
+            data_so_far = data_so_far.tail(plot_window_size)
+
+            with plot_placeholder.container():
+                st.metric("Current Timestep", int(data_so_far["timestep"].iloc[-1]))
+                st.metric("Anomaly Score", f"{data_so_far['anomaly_score'].iloc[-1]:.3f}")
+                st.metric("Spike", "Yes" if data_so_far['spike_flag'].iloc[-1] else "No")
+                st.metric("Lag", data_so_far['detection_lag'].iloc[-1])
+
+                st.line_chart(data_so_far.set_index("timestep")["anomaly_score"])
+
+                # Show inputs
+                input_cols = [c for c in data_so_far.columns if c not in ["timestep", "anomaly_score", "spike_flag", "detection_lag"]]
+                for col in input_cols:
+                    st.line_chart(data_so_far.set_index("timestep")[col])
+
+        time.sleep(1)
+
+    st.success("Streaming ended. Reload to start again.")
+

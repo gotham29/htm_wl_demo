@@ -1,0 +1,39 @@
+anomaly_event_timesteps: []
+features:
+  ALTITUDE:
+    max: 875.21216
+    min: 0.0003350000000068
+    type: float64
+    weight: 1.0
+  PITCH_STIC:
+    max: 0.3980554933333333
+    min: -0.0843767523333333
+    type: float64
+    weight: 1.0
+  ROLL_STICK:
+    max: 0.7444473699999999
+    min: -0.39365114
+    type: float64
+    weight: 1.0
+  RUDDER_PED:
+    max: 0.60179154
+    min: -0.1855215033333333
+    type: float64
+    weight: 1.0
+  RUN_rpt1:
+    max: 64.0
+    min: 64.0
+    type: float64
+    weight: 1.0
+  TIME:
+    max: 58.1439995
+    min: 18.9119995
+    type: float64
+    weight: 1.0
+frontend:
+  log_dir: backend/logs/stream_steps
+  plot_window_size: 120
+spike_detection:
+  growth_threshold: 50
+  prior_window: 15
+  recent_window: 5

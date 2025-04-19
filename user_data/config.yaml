@@ -1,0 +1,19 @@
+anomaly_event_timesteps: []
+features:
+  PITCH_STIC:
+    max: 0.3980554933333333
+    min: -0.0843767523333333
+    type: float
+    weight: 1.0
+  ROLL_STICK:
+    max: 0.7444473699999999
+    min: -0.39365114
+    type: float
+    weight: 1.0
+frontend:
+  log_dir: backend/logs/stream_steps
+  plot_window_size: 120
+spike_detection:
+  growth_threshold: 50
+  prior_window: 15
+  recent_window: 5
